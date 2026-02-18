@@ -2,29 +2,52 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: ChatViewModel
-    @State private var step: AppStep = .chat
+    @State private var isReady = false
+    @State private var currentStep: AppStep = .chat
     
     enum AppStep {
-        case chat, terminal, mainApp
+        case chat, lock, mainApp
     }
     
     var body: some View {
-        NavigationView {
-            Group {
-                switch step {
+        ZStack {
+            Color(UIColor.systemBackground).ignoresSafeArea()
+            
+            if !isReady {
+                SplashScreenView()
+                    .transition(.opacity)
+            } else {
+                switch currentStep {
                 case .chat:
                     ChatView(onFinish: {
-                        withAnimation { step = .terminal }
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            currentStep = .lock
+                        }
                     })
-                case .terminal:
-                    TerminalView(onEnterApp: {
-                        withAnimation { step = .mainApp }
+                    .onAppear { viewModel.startConversation() }
+                    .transition(.asymmetric(insertion: .scale(scale: 0.95).combined(with: .opacity), removal: .opacity))
+                    
+                case .lock:
+                    LockTransitionView(onComplete: {
+                        withAnimation(.easeInOut(duration: 0.8)) {
+                            currentStep = .mainApp
+                        }
                     })
+                    .transition(.opacity)
+                    
                 case .mainApp:
                     MainTabView()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+        }
+        .onAppear {
+            // Animation du Splash Screen pendant 2 secondes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.8)) {
+                    isReady = true
+                }
+            }
         }
     }
 }
