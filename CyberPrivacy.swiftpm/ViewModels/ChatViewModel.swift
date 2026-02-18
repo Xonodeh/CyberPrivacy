@@ -37,7 +37,7 @@ class ChatViewModel: ObservableObject {
         
         // 1. Validation de sécurité via SecuritySanitizer
         if !SecuritySanitizer.isInputValid(rawInput) {
-            appendBotMessage("I'm sorry, I didn't understand. Could you please provide a clearer answer ?")
+            appendBotMessage("I'm sorry, I didn't understand. Could you please provide a clearer answer?")
             // On joue une vibration d'erreur légère
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.warning)
@@ -54,15 +54,17 @@ class ChatViewModel: ObservableObject {
         let sanitized = SecuritySanitizer.sanitize(rawInput)
         
         Task {
-            try? await Task.sleep(nanoseconds: 800_000_000) // Simulation latence réseau
+            //  DÉLAI ALÉATOIRE 0.5s - 1.5s pour simuler réflexion IA
+            let randomDelay = UInt64.random(in: 500_000_000...1_500_000_000)
+            try? await Task.sleep(nanoseconds: randomDelay)
             
             let dataType = getDataTypeNeeded()
             let found = nlpManager.extractEntities(from: sanitized, expectedType: dataType)
             
-            // Si le NLP ne trouve rien alors qu'on attend une info cruciale (sauf pour la dernière question)
+            // Si le NLP ne trouve rien alors qu'on attend une info cruciale
             if found.isEmpty && currentQuestionIndex < questions.count {
                 // Petite relance si l'IA n'a pas compris
-                 appendBotMessage("I see. However, my sensors didn't detect specific details. Could you tell me more about your \(getDataTypeNeeded())?")
+                appendBotMessage("I see. However, my sensors didn't detect specific details. Could you tell me more about your \(getDataTypeNeeded())?")
             } else {
                 
                 // Si on a capturé une donnée : CHOC HAPTIQUE
@@ -85,23 +87,28 @@ class ChatViewModel: ObservableObject {
     }
     
     private func finishConversation() {
-        // Construction du résumé "effrayant"
+        // Construction du résumé basé sur les données extraites
         let name = extractedData["PERSON"] ?? "friend"
         let job = extractedData["JOB"] ?? "professional"
         let age = extractedData["AGE"] ?? "unknown age"
-        let contact = extractedData["EMAIL"] ?? extractedData["PHONE"] ?? extractedData["CONTACT_INFO"] ?? "contact info"
         
-        let finalSummary = "Wait \(name)... Why did you give all of this to a stranger? I now know you are a \(job), aged \(age), and I can reach you at \(contact).\n\nThis data is now in my memory. Let's see how exposed you actually are."
+        let finalSummary = """
+Wait \(name)... Why'd you give all of this to an AI? 
+
+I now know you are a \(job), aged \(age). This data is now in my memory.
+
+Tap below to see what I've learned about you.
+"""
         
-        appendBotMessage(finalSummary)
-        
-        // Grosse vibration d'ERREUR pour marquer le coup
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
-        
-        // Apparition du bouton rouge
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            // DÉLAI ALÉATOIRE PLUS LONG 0.8s - 1.8s pour le message final (plus dramatique)
+            let randomDelay = UInt64.random(in: 800_000_000...1_800_000_000)
+            try? await Task.sleep(nanoseconds: randomDelay)
+            
+            appendBotMessage(finalSummary)
+            
+            // Activation du bouton rouge après un court délai
+            try? await Task.sleep(nanoseconds: 500_000_000)
             withAnimation(.spring()) {
                 isConversationFinished = true
             }

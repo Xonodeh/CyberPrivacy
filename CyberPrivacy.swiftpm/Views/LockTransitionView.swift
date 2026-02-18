@@ -60,8 +60,8 @@ struct LockTransitionView: View {
         }
         
         // Phase 2 : Transition vers lock (1.2s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            withAnimation(.easeInOut(duration: 0.3)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeInOut(duration: 0.5)) {
                 scale = 0.8
                 opacity = 0.0
             }

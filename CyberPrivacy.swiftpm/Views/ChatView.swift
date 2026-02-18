@@ -43,7 +43,7 @@ struct ChatView: View {
                             ForEach(Array(viewModel.messages.enumerated()), id: \.offset) { index, msg in
                                 ChatBubble(message: msg)
                                     .id(index)
-                                    .transition(.scale.combined(with: .opacity)) // Transition plus visible
+                                    .transition(.scale.combined(with: .opacity))
                             }
                         }
                         .padding(.horizontal)
@@ -61,7 +61,7 @@ struct ChatView: View {
                         .padding(12)
                         .background(Color.secondary.opacity(0.1))
                         .cornerRadius(20)
-                        .disabled(isClosing)
+                        .disabled(isClosing || viewModel.isConversationFinished)
                     
                     Button(action: {
                         withAnimation(.spring()) {
@@ -72,53 +72,46 @@ struct ChatView: View {
                             .font(.system(size: 32))
                             .foregroundColor(.blue)
                     }
-                    .disabled(viewModel.currentInput.isEmpty || isClosing)
+                    .disabled(viewModel.currentInput.isEmpty || isClosing || viewModel.isConversationFinished)
                 }
                 .padding()
                 .background(.ultraThinMaterial)
                 .blur(radius: isClosing ? 15 : 0)
 
-                // --- BOUTON FINAL ---
+                // --- BOUTON FINAL STYLÉ ---
                 if viewModel.isConversationFinished && !isClosing {
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.8)) {
                             isClosing = true
                         }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             onFinish()
                         }
                     }) {
-                        Text("PROTECT MY DATA")
-                            .font(.caption.bold())
-                            .tracking(1)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.red)
-                            .foregroundColor(.white)
+                        HStack(spacing: 12) {
+                            Image(systemName: "lock.open.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                            
+                            Text("Learn what you can do to stay safe")
+                                .font(.system(size: 13, weight: .semibold))
+                            
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            Color.red
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: Color.red.opacity(0.4), radius: 12, x: 0, y: 6)
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-            }
-            
-            // --- OVERLAY DE PRÉVENTION ---
-            if isClosing {
-                VStack(spacing: 20) {
-                    Image(systemName: "shield.slash.fill")
-                        .font(.system(size: 50))
-                        .foregroundColor(.red)
-                    
-                    Text("Privacy Warning")
-                        .font(.title2.bold())
-                    
-                    Text("This conversation contained sensitive data that could be used to track or identify you. Always be cautious with AI.")
-                        .multilineTextAlignment(.center)
-                        .font(.subheadline)
-                        .padding(.horizontal, 40)
-                }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 25).fill(.ultraThinMaterial))
-                .transition(.scale.combined(with: .opacity))
-                .zIndex(2)
             }
         }
     }
@@ -139,7 +132,7 @@ struct ChatBubble: View {
     var body: some View {
         HStack {
             if message.isUser {
-                Spacer(minLength: 50) // Pousse vers la droite
+                Spacer(minLength: 50)
             }
             
             Text(message.text)
@@ -157,7 +150,7 @@ struct ChatBubble: View {
                 )
             
             if !message.isUser {
-                Spacer(minLength: 50) // Pousse vers la gauche
+                Spacer(minLength: 50)
             }
         }
     }
