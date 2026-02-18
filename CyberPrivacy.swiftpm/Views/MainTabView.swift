@@ -40,6 +40,11 @@ struct MainTabView: View {
             .tabItem {
                 Label("Conseils", systemImage: "lightbulb")
             }
+            //Troisème onglet
+            PasswordLabView()
+                .tabItem {
+                    Label("Lab", systemImage: "flask.fill")
+                }
         }
     }
 }
