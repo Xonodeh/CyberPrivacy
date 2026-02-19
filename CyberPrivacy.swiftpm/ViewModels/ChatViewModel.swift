@@ -191,6 +191,10 @@ Let's learn how to protect yourself.
 
             appendBotMessage(finalSummary)
 
+            // Persist data for subsequent launches
+            UserDefaults.standard.set(true, forKey: "hasCompletedChat")
+            UserDefaults.standard.set(name, forKey: "userName")
+
             // Activation du bouton rouge après un court délai
             try? await Task.sleep(nanoseconds: 500_000_000)
             withAnimation(UIAccessibility.isReduceMotionEnabled ? .none : .spring()) {
