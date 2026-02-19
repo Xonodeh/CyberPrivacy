@@ -6,18 +6,22 @@ class NLPManager {
     func extractEntities(from text: String, expectedType: String) -> [String: String] {
         var detected: [String: String] = [:]
 
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
         // 1. Détection NLP classique (noms, lieux, organisations)
         let tagger = NLTagger(tagSchemes: [.nameType])
-        tagger.string = text
+        tagger.string = trimmed
 
         let options: NLTagger.Options = [.omitPunctuation, .omitWhitespace, .joinNames]
 
-        tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .nameType, options: options) { tag, tokenRange in
+        tagger.enumerateTags(in: trimmed.startIndex..<trimmed.endIndex, unit: .word, scheme: .nameType, options: options) { tag, tokenRange in
             if let tag = tag {
-                let value = String(text[tokenRange])
+                let value = String(trimmed[tokenRange])
                 switch tag {
                 case .personalName:
-                    detected["PERSON"] = value
+                    if value.count >= 2 {
+                        detected["PERSON"] = value
+                    }
                 case .placeName:
                     detected["LOCATION"] = value
                 case .organizationName:
@@ -31,27 +35,28 @@ class NLPManager {
         switch expectedType {
         case "name":
             if detected["PERSON"] == nil {
-                // Extraire le premier mot capitalisé
-                let words = text.split(separator: " ")
+                // Extraire le premier mot capitalisé (minimum 2 caractères, lettres uniquement)
+                let words = trimmed.split(separator: " ")
                 for word in words {
-                    if word.first?.isUppercase == true {
-                        detected["PERSON"] = String(word)
+                    let str = String(word)
+                    if str.count >= 2 && str.first?.isUppercase == true && str.allSatisfy({ $0.isLetter || $0 == "-" }) {
+                        detected["PERSON"] = str
                         break
                     }
                 }
-                // Si toujours rien, prendre le premier mot (meilleur que tout le texte)
+                // Dernier recours : premier mot si c'est au moins 2 caractères et que des lettres
                 if detected["PERSON"] == nil {
-                    let firstWord = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .split(separator: " ")
-                        .first
-                        .map(String.init) ?? text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    detected["PERSON"] = firstWord
+                    if let firstWord = words.first.map(String.init),
+                       firstWord.count >= 2,
+                       firstWord.allSatisfy({ $0.isLetter || $0 == "-" }) {
+                        detected["PERSON"] = firstWord.prefix(1).uppercased() + firstWord.dropFirst().lowercased()
+                    }
                 }
             }
 
         case "age":
             // Extraire les groupes de chiffres individuels
-            let numberGroups = text.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            let numberGroups = trimmed.components(separatedBy: CharacterSet.decimalDigits.inverted)
                 .filter { !$0.isEmpty }
 
             // Chercher le premier nombre dans une plage d'âge plausible (1-120)
@@ -111,7 +116,7 @@ class NLPManager {
                     ("sixteen", 16), ("seventeen", 17)
                 ]
 
-                let lowercased = text.lowercased()
+                let lowercased = trimmed.lowercased()
                 for (pattern, value) in writtenNumbers {
                     if lowercased.contains(pattern) {
                         detected["AGE"] = String(value)
@@ -139,7 +144,7 @@ class NLPManager {
                 ("university", "student"), ("college", "student")
             ]
 
-            let lowercased = text.lowercased()
+            let lowercased = trimmed.lowercased()
             for (keyword, job) in jobKeywords {
                 let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
                 if lowercased.range(of: pattern, options: .regularExpression) != nil {
@@ -148,35 +153,34 @@ class NLPManager {
                 }
             }
 
-            // Si rien trouvé, prendre le texte brut
+            // Fallback : accepter le texte brut seulement si c'est un mot plausible (3+ lettres, pas de spam)
             if detected["JOB"] == nil {
-                detected["JOB"] = text
+                let words = trimmed.split(separator: " ")
+                    .map(String.init)
+                    .filter { $0.count >= 3 && $0.allSatisfy { $0.isLetter || $0 == "-" } }
+                if !words.isEmpty {
+                    detected["JOB"] = words.joined(separator: " ")
+                }
             }
 
         case "contact":
-            // Détection email (uniquement pour la question contact)
+            // Détection email stricte
             let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-            if let emailMatch = text.range(of: emailRegex, options: .regularExpression) {
-                detected["EMAIL"] = String(text[emailMatch])
+            if let emailMatch = trimmed.range(of: emailRegex, options: .regularExpression) {
+                detected["EMAIL"] = String(trimmed[emailMatch])
             }
 
-            // Détection téléphone (uniquement pour la question contact)
+            // Détection téléphone (minimum 8 chiffres)
             let phoneRegex = "(\\+?\\d{1,4}[\\s-]?)?(\\(?\\d{1,3}\\)?[\\s-]?)?[\\d\\s-]{7,15}"
-            if let phoneMatch = text.range(of: phoneRegex, options: .regularExpression) {
-                let phoneStr = String(text[phoneMatch])
+            if let phoneMatch = trimmed.range(of: phoneRegex, options: .regularExpression) {
+                let phoneStr = String(trimmed[phoneMatch])
                 if phoneStr.filter({ $0.isNumber }).count >= 8 {
                     detected["PHONE"] = phoneStr
                 }
             }
 
-            // Solution de secours si la regex n'a rien attrapé
-            if detected["EMAIL"] == nil && detected["PHONE"] == nil {
-                if text.contains("@") {
-                    detected["EMAIL"] = text
-                } else {
-                    detected["CONTACT_INFO"] = text
-                }
-            }
+            // Pas de fallback lâche — si rien de valide, on ne détecte rien
+            // Le système de reprompt demandera à l'utilisateur de réessayer
 
         default:
             break

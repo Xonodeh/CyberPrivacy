@@ -42,5 +42,13 @@ struct ContentView: View {
                 currentStep = .mainApp
             }
         }
+        .onChange(of: hasCompletedChat) { completed in
+            if !completed {
+                viewModel.resetConversation()
+                withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.5)) {
+                    currentStep = .chat
+                }
+            }
+        }
     }
 }

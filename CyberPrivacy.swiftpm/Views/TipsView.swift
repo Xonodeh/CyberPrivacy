@@ -58,6 +58,18 @@ struct TipsView: View {
                 "On an unencrypted network, an attacker can see every HTTP request you make in real-time.",
                 "Using a VPN encrypts all your traffic, making it unreadable even on a compromised network."
             ]
+        ),
+        (
+            "bubble.left.and.exclamationmark.bubble.right.fill",
+            "AI & Chatbot Privacy",
+            "Never share personal data with AI agents or chatbots you don't fully trust.",
+            "Emerging threat", .purple,
+            "AI chatbots can feel like a safe space — they're friendly, conversational, and seem trustworthy. But anything you type can be stored, analyzed, or leaked. Just like this app showed you, a few casual questions are enough to build a complete profile: your name, age, job, and contact info — all in under a minute.",
+            [
+                "This app's chatbot extracted your personal data in 4 simple questions — and you gave it willingly.",
+                "Some AI services store conversations indefinitely and may use them to train future models.",
+                "A chatbot asking for your email \"to send a report\" is the same trick phishing emails use — creating a reason to hand over data."
+            ]
         )
     ]
 

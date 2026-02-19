@@ -47,6 +47,10 @@ struct ChatView: View {
                                     .id(index)
                                     .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
                             }
+
+                            Color.clear
+                                .frame(height: 1)
+                                .id("bottom")
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 20)
@@ -128,10 +132,9 @@ struct ChatView: View {
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
-        guard let lastIndex = viewModel.messages.indices.last else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation(reduceMotion ? .none : .spring()) {
-                proxy.scrollTo(lastIndex, anchor: .bottom)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(reduceMotion ? .none : .easeOut(duration: 0.3)) {
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
         }
     }

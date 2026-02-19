@@ -6,9 +6,11 @@ struct HomeView: View {
     @AppStorage("userName") private var savedName = "friend"
     @Binding var showSettings: Bool
     @State private var appeared = false
-
+    
+    
+    //Mr.Robot reference
     private var displayName: String {
-        viewModel.extractedData["PERSON"] ?? savedName
+        "friend"
     }
 
     var body: some View {
@@ -33,7 +35,7 @@ struct HomeView: View {
 
                 // Welcome, {name}
                 HStack(spacing: 0) {
-                    Text("Welcome, ")
+                    Text("Hello, ")
                         .font(.system(.title3, design: .rounded).weight(.medium))
                         .foregroundColor(.secondary)
 
@@ -54,7 +56,7 @@ struct HomeView: View {
                 }
 
                 // Description
-                Text("An interactive experience that shows how easily personal data can be collected — and how to protect yourself.")
+                Text("CyberPrivacy is a interactive experience that shows how easily personal data can be collected — and how to protect yourself.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -62,6 +64,11 @@ struct HomeView: View {
                     .padding(.horizontal, 32)
 
                 Spacer()
+
+                Text("Made by Nael HADDADI — Swift Student Challenge 2026")
+                    .font(.caption2)
+                    .foregroundColor(.secondary.opacity(0.5))
+                    .padding(.bottom, 16)
             }
             .frame(maxWidth: 500)
             .opacity(appeared ? 1.0 : (reduceMotion ? 1.0 : 0.0))

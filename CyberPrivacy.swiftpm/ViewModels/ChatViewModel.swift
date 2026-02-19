@@ -25,24 +25,36 @@ class ChatViewModel: ObservableObject {
         }
     }
 
+    func resetConversation() {
+        messages = []
+        currentInput = ""
+        extractedData = [:]
+        isConversationFinished = false
+        currentQuestionIndex = 0
+        repromptCount = 0
+    }
+
     func sendMessage() {
         guard !currentInput.isEmpty else { return }
 
         let rawInput = currentInput
         currentInput = "" // Reset immédiat de l'UI
 
-        // 1. Validation de sécurité via SecuritySanitizer
-        if !SecuritySanitizer.isInputValid(rawInput) {
-            appendBotMessage("I'm sorry, I didn't understand. Could you please provide a clearer answer?")
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.warning)
-            return
-        }
-
-        // 2. Ajouter le message utilisateur
+        // 1. Toujours afficher le message utilisateur dans le chat
         let userMsg = ChatMessage(text: rawInput, isUser: true)
         withAnimation(UIAccessibility.isReduceMotionEnabled ? .none : .spring(response: 0.4, dampingFraction: 0.7)) {
             messages.append(userMsg)
+        }
+
+        // 2. Validation de sécurité via SecuritySanitizer
+        if !SecuritySanitizer.isInputValid(rawInput) {
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                appendBotMessage("I'm sorry, I didn't understand. Could you please provide a clearer answer?")
+            }
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.warning)
+            return
         }
 
         // 3. Assainissement des données avant envoi au "serveur" (NLP)
