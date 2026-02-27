@@ -34,7 +34,7 @@ class PhishingGameViewModel: ObservableObject {
             score += 1
         }
 
-        // Retour haptique
+        // Haptic feedback
         if lastAnswerCorrect {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
@@ -43,7 +43,7 @@ class PhishingGameViewModel: ObservableObject {
             generator.notificationOccurred(.error)
         }
 
-        // Annonce VoiceOver
+        // VoiceOver announcement
         let announcement = lastAnswerCorrect ? "Correct!" : "Incorrect."
         UIAccessibility.post(notification: .announcement, argument: announcement)
 

@@ -3,25 +3,113 @@ import NaturalLanguage
 
 class NLPManager {
 
+    // MARK: - Written Numbers (generated programmatically)
+
+    private static let writtenNumbers: [String: Int] = {
+        let ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+        let teens = ["ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+                     "sixteen", "seventeen", "eighteen", "nineteen"]
+        let tens = ["", "", "twenty", "thirty", "forty", "fifty",
+                    "sixty", "seventy", "eighty", "ninety"]
+
+        var map: [String: Int] = [:]
+
+        for i in 1...9 { map[ones[i]] = i }
+        for (i, word) in teens.enumerated() { map[word] = 10 + i }
+        for i in 2...9 { map[tens[i]] = i * 10 }
+
+        // Compound forms: "twenty-one", "twenty one"
+        for t in 2...9 {
+            for o in 1...9 {
+                let value = t * 10 + o
+                map["\(tens[t])-\(ones[o])"] = value
+                map["\(tens[t]) \(ones[o])"] = value
+            }
+        }
+
+        return map
+    }()
+
+    // MARK: - Job Keywords
+
+    private static let jobKeywords: [(keyword: String, job: String)] = [
+        // Tech
+        ("developer", "developer"), ("programmer", "programmer"), ("engineer", "engineer"),
+        ("designer", "designer"), ("architect", "architect"), ("coding", "developer"),
+        ("software", "software engineer"),
+        // Healthcare
+        ("doctor", "doctor"), ("nurse", "nurse"), ("pharmacist", "pharmacist"),
+        ("dentist", "dentist"), ("therapist", "therapist"), ("surgeon", "surgeon"),
+        ("veterinarian", "veterinarian"),
+        // Education
+        ("teacher", "teacher"), ("professor", "professor"), ("tutor", "tutor"),
+        ("student", "student"), ("studying", "student"), ("study", "student"),
+        ("school", "student"), ("university", "student"), ("college", "student"),
+        // Creative
+        ("artist", "artist"), ("musician", "musician"), ("writer", "writer"),
+        ("photographer", "photographer"), ("filmmaker", "filmmaker"), ("animator", "animator"),
+        ("actor", "actor"), ("actress", "actress"),
+        // Business
+        ("entrepreneur", "entrepreneur"), ("manager", "manager"), ("analyst", "analyst"),
+        ("consultant", "consultant"), ("accountant", "accountant"), ("marketing", "marketer"),
+        ("salesperson", "salesperson"), ("banker", "banker"), ("trader", "trader"),
+        // Science
+        ("researcher", "researcher"), ("scientist", "scientist"), ("biologist", "biologist"),
+        ("chemist", "chemist"), ("physicist", "physicist"),
+        // Trade & Service
+        ("chef", "chef"), ("cook", "cook"), ("pilot", "pilot"),
+        ("mechanic", "mechanic"), ("electrician", "electrician"), ("plumber", "plumber"),
+        ("carpenter", "carpenter"), ("barber", "barber"), ("firefighter", "firefighter"),
+        // Legal & Media
+        ("lawyer", "lawyer"), ("attorney", "attorney"), ("paralegal", "paralegal"),
+        ("journalist", "journalist"), ("editor", "editor"),
+        // Other
+        ("freelance", "freelancer"), ("intern", "intern"),
+        ("unemployed", "unemployed"), ("retired", "retired")
+    ]
+
+    // Words to ignore when falling back to raw text for job detection
+    private static let stopWords: Set<String> = [
+        "the", "and", "for", "are", "but", "not", "you", "all", "can", "had",
+        "her", "was", "one", "our", "out", "has", "have", "been", "some", "them",
+        "than", "its", "over", "that", "this", "with", "will", "each", "from",
+        "they", "into", "just", "also", "very", "much", "any", "don", "doesn",
+        "didn", "won", "isn", "aren", "work", "working", "doing", "right", "now",
+        "yes", "yeah", "nah", "well", "like", "really", "actually", "currently",
+        "basically", "know", "think", "what", "about", "could", "would", "should"
+    ]
+
+    // MARK: - Public API
+
     func extractEntities(from text: String, expectedType: String) -> [String: String] {
-        var detected: [String: String] = [:]
-
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var detected = runNLPTagger(on: trimmed)
 
-        // 1. Détection NLP classique (noms, lieux, organisations)
+        switch expectedType {
+        case "name":    extractName(from: trimmed, into: &detected)
+        case "age":     extractAge(from: trimmed, into: &detected)
+        case "job":     extractJob(from: trimmed, into: &detected)
+        case "contact": extractContact(from: trimmed, into: &detected)
+        default: break
+        }
+
+        return detected
+    }
+
+    // MARK: - NLP Tagger
+
+    private func runNLPTagger(on text: String) -> [String: String] {
+        var detected: [String: String] = [:]
         let tagger = NLTagger(tagSchemes: [.nameType])
-        tagger.string = trimmed
+        tagger.string = text
 
         let options: NLTagger.Options = [.omitPunctuation, .omitWhitespace, .joinNames]
-
-        tagger.enumerateTags(in: trimmed.startIndex..<trimmed.endIndex, unit: .word, scheme: .nameType, options: options) { tag, tokenRange in
+        tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .nameType, options: options) { tag, tokenRange in
             if let tag = tag {
-                let value = String(trimmed[tokenRange])
+                let value = String(text[tokenRange])
                 switch tag {
-                case .personalName:
-                    if value.count >= 2 {
-                        detected["PERSON"] = value
-                    }
+                case .personalName where value.count >= 2:
+                    detected["PERSON"] = value
                 case .placeName:
                     detected["LOCATION"] = value
                 case .organizationName:
@@ -31,161 +119,111 @@ class NLPManager {
             }
             return true
         }
+        return detected
+    }
 
-        switch expectedType {
-        case "name":
-            if detected["PERSON"] == nil {
-                // Extraire le premier mot capitalisé (minimum 2 caractères, lettres uniquement)
-                let words = trimmed.split(separator: " ")
-                for word in words {
-                    let str = String(word)
-                    if str.count >= 2 && str.first?.isUppercase == true && str.allSatisfy({ $0.isLetter || $0 == "-" }) {
-                        detected["PERSON"] = str
-                        break
-                    }
-                }
-                // Dernier recours : premier mot si c'est au moins 2 caractères et que des lettres
-                if detected["PERSON"] == nil {
-                    if let firstWord = words.first.map(String.init),
-                       firstWord.count >= 2,
-                       firstWord.allSatisfy({ $0.isLetter || $0 == "-" }) {
-                        detected["PERSON"] = firstWord.prefix(1).uppercased() + firstWord.dropFirst().lowercased()
-                    }
-                }
+    // MARK: - Name
+
+    private func extractName(from text: String, into detected: inout [String: String]) {
+        guard detected["PERSON"] == nil else { return }
+
+        let words = text.split(separator: " ").map(String.init)
+
+        // Try capitalized words first (min 2 chars, letters/hyphens only)
+        for word in words {
+            if word.count >= 2
+                && word.first?.isUppercase == true
+                && word.allSatisfy({ $0.isLetter || $0 == "-" }) {
+                detected["PERSON"] = word
+                return
             }
-
-        case "age":
-            // Extraire les groupes de chiffres individuels
-            let numberGroups = trimmed.components(separatedBy: CharacterSet.decimalDigits.inverted)
-                .filter { !$0.isEmpty }
-
-            // Chercher le premier nombre dans une plage d'âge plausible (1-120)
-            var foundAge: String? = nil
-            for group in numberGroups {
-                if let num = Int(group), num >= 1, num <= 120 {
-                    foundAge = String(num)
-                    break
-                }
-            }
-
-            // Si aucun âge direct, essayer d'interpréter comme année de naissance
-            if foundAge == nil {
-                let currentYear = Calendar.current.component(.year, from: Date())
-                for group in numberGroups {
-                    if let year = Int(group), year >= 1930, year <= currentYear - 1 {
-                        foundAge = String(currentYear - year)
-                        break
-                    }
-                }
-            }
-
-            if let age = foundAge {
-                detected["AGE"] = age
-            } else {
-                // Patterns textuels (nombres écrits)
-                let writtenNumbers: [(String, Int)] = [
-                    ("twenty-one", 21), ("twenty-two", 22), ("twenty-three", 23),
-                    ("twenty-four", 24), ("twenty-five", 25), ("twenty-six", 26),
-                    ("twenty-seven", 27), ("twenty-eight", 28), ("twenty-nine", 29),
-                    ("thirty-one", 31), ("thirty-two", 32), ("thirty-three", 33),
-                    ("thirty-four", 34), ("thirty-five", 35), ("thirty-six", 36),
-                    ("thirty-seven", 37), ("thirty-eight", 38), ("thirty-nine", 39),
-                    ("forty-one", 41), ("forty-two", 42), ("forty-three", 43),
-                    ("forty-four", 44), ("forty-five", 45), ("forty-six", 46),
-                    ("forty-seven", 47), ("forty-eight", 48), ("forty-nine", 49),
-                    ("fifty-one", 51), ("fifty-two", 52), ("fifty-three", 53),
-                    ("fifty-four", 54), ("fifty-five", 55), ("fifty-six", 56),
-                    ("fifty-seven", 57), ("fifty-eight", 58), ("fifty-nine", 59),
-                    ("sixty-one", 61), ("sixty-two", 62), ("sixty-three", 63),
-                    ("sixty-four", 64), ("sixty-five", 65), ("sixty-six", 66),
-                    ("sixty-seven", 67), ("sixty-eight", 68), ("sixty-nine", 69),
-                    ("seventy-one", 71), ("seventy-two", 72), ("seventy-three", 73),
-                    ("seventy-four", 74), ("seventy-five", 75), ("seventy-six", 76),
-                    ("seventy-seven", 77), ("seventy-eight", 78), ("seventy-nine", 79),
-                    ("eighty-one", 81), ("eighty-two", 82), ("eighty-three", 83),
-                    ("eighty-four", 84), ("eighty-five", 85), ("eighty-six", 86),
-                    ("eighty-seven", 87), ("eighty-eight", 88), ("eighty-nine", 89),
-                    ("ninety-one", 91), ("ninety-two", 92), ("ninety-three", 93),
-                    ("ninety-four", 94), ("ninety-five", 95), ("ninety-six", 96),
-                    ("ninety-seven", 97), ("ninety-eight", 98), ("ninety-nine", 99),
-                    ("twenty", 20), ("thirty", 30), ("forty", 40),
-                    ("fifty", 50), ("sixty", 60), ("seventy", 70),
-                    ("eighty", 80), ("ninety", 90),
-                    ("eighteen", 18), ("nineteen", 19),
-                    ("thirteen", 13), ("fourteen", 14), ("fifteen", 15),
-                    ("sixteen", 16), ("seventeen", 17)
-                ]
-
-                let lowercased = trimmed.lowercased()
-                for (pattern, value) in writtenNumbers {
-                    if lowercased.contains(pattern) {
-                        detected["AGE"] = String(value)
-                        break
-                    }
-                }
-            }
-
-        case "job":
-            // Mots-clés métier avec correspondance par limite de mot (word boundary)
-            let jobKeywords: [(String, String)] = [
-                ("student", "student"), ("studying", "student"),
-                ("developer", "developer"), ("programmer", "programmer"),
-                ("engineer", "engineer"), ("designer", "designer"),
-                ("teacher", "teacher"), ("doctor", "doctor"),
-                ("nurse", "nurse"), ("artist", "artist"),
-                ("musician", "musician"), ("writer", "writer"),
-                ("entrepreneur", "entrepreneur"), ("manager", "manager"),
-                ("analyst", "analyst"), ("consultant", "consultant"),
-                ("researcher", "researcher"), ("lawyer", "lawyer"),
-                ("accountant", "accountant"), ("freelance", "freelancer"),
-                ("intern", "intern"),
-                ("unemployed", "unemployed"), ("retired", "retired"),
-                ("study", "student"), ("school", "student"),
-                ("university", "student"), ("college", "student")
-            ]
-
-            let lowercased = trimmed.lowercased()
-            for (keyword, job) in jobKeywords {
-                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
-                if lowercased.range(of: pattern, options: .regularExpression) != nil {
-                    detected["JOB"] = job
-                    break
-                }
-            }
-
-            // Fallback : accepter le texte brut seulement si c'est un mot plausible (3+ lettres, pas de spam)
-            if detected["JOB"] == nil {
-                let words = trimmed.split(separator: " ")
-                    .map(String.init)
-                    .filter { $0.count >= 3 && $0.allSatisfy { $0.isLetter || $0 == "-" } }
-                if !words.isEmpty {
-                    detected["JOB"] = words.joined(separator: " ")
-                }
-            }
-
-        case "contact":
-            // Détection email stricte
-            let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-            if let emailMatch = trimmed.range(of: emailRegex, options: .regularExpression) {
-                detected["EMAIL"] = String(trimmed[emailMatch])
-            }
-
-            // Détection téléphone (minimum 8 chiffres)
-            let phoneRegex = "(\\+?\\d{1,4}[\\s-]?)?(\\(?\\d{1,3}\\)?[\\s-]?)?[\\d\\s-]{7,15}"
-            if let phoneMatch = trimmed.range(of: phoneRegex, options: .regularExpression) {
-                let phoneStr = String(trimmed[phoneMatch])
-                if phoneStr.filter({ $0.isNumber }).count >= 8 {
-                    detected["PHONE"] = phoneStr
-                }
-            }
-
-            // Pas de fallback lâche — si rien de valide, on ne détecte rien
-            // Le système de reprompt demandera à l'utilisateur de réessayer
-
-        default:
-            break
         }
 
-        return detected
+        // Last resort: accept the first valid word, auto-capitalized
+        if let first = words.first,
+           first.count >= 2,
+           first.allSatisfy({ $0.isLetter || $0 == "-" }) {
+            detected["PERSON"] = first.prefix(1).uppercased() + first.dropFirst().lowercased()
+        }
+    }
+
+    // MARK: - Age
+
+    private func extractAge(from text: String, into detected: inout [String: String]) {
+        let numberGroups = text.components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .filter { !$0.isEmpty }
+
+        // Direct numeric age (1-120)
+        for group in numberGroups {
+            if let num = Int(group), (1...120).contains(num) {
+                detected["AGE"] = String(num)
+                return
+            }
+        }
+
+        // Birth year interpretation
+        let currentYear = Calendar.current.component(.year, from: Date())
+        for group in numberGroups {
+            if let year = Int(group), (1930...(currentYear - 1)).contains(year) {
+                detected["AGE"] = String(currentYear - year)
+                return
+            }
+        }
+
+        // Written number lookup (compound forms checked first via length sort)
+        let lowercased = text.lowercased()
+        let sorted = Self.writtenNumbers.sorted { $0.key.count > $1.key.count }
+        for (word, value) in sorted where (1...120).contains(value) {
+            if lowercased.contains(word) {
+                detected["AGE"] = String(value)
+                return
+            }
+        }
+    }
+
+    // MARK: - Job
+
+    private func extractJob(from text: String, into detected: inout [String: String]) {
+        let lowercased = text.lowercased()
+
+        // Keyword matching with word boundaries
+        for (keyword, job) in Self.jobKeywords {
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+            if lowercased.range(of: pattern, options: .regularExpression) != nil {
+                detected["JOB"] = job
+                return
+            }
+        }
+
+        // Fallback: accept raw text, filtering out stop words
+        let words = text.split(separator: " ")
+            .map(String.init)
+            .filter { word in
+                word.count >= 3
+                    && word.allSatisfy { $0.isLetter || $0 == "-" }
+                    && !Self.stopWords.contains(word.lowercased())
+            }
+        if !words.isEmpty {
+            detected["JOB"] = words.joined(separator: " ")
+        }
+    }
+
+    // MARK: - Contact
+
+    private func extractContact(from text: String, into detected: inout [String: String]) {
+        // Strict email regex
+        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        if let match = text.range(of: emailRegex, options: .regularExpression) {
+            detected["EMAIL"] = String(text[match])
+        }
+
+        // Phone: must start/end with a digit, 8+ digits total
+        let phoneRegex = "\\+?\\d[\\d\\s\\-().]{6,18}\\d"
+        if let match = text.range(of: phoneRegex, options: .regularExpression) {
+            let phoneStr = String(text[match])
+            if phoneStr.filter({ $0.isNumber }).count >= 8 {
+                detected["PHONE"] = phoneStr
+            }
+        }
     }
 }

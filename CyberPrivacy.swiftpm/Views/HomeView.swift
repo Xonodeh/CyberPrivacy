@@ -8,7 +8,7 @@ struct HomeView: View {
     @State private var appeared = false
     
     
-    //Mr.Robot reference
+    //Mr.Robot reference :)
     private var displayName: String {
         "friend"
     }

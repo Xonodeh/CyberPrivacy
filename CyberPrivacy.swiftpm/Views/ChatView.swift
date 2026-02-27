@@ -8,11 +8,10 @@ struct ChatView: View {
 
     var body: some View {
         ZStack {
-            // Fond principal
             Color(UIColor.systemBackground).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // --- HEADER ---
+                // Header
                 HStack {
                     Spacer()
                     Image(systemName: "swift")
@@ -36,7 +35,7 @@ struct ChatView: View {
                 )
                 .zIndex(1)
 
-                // --- ZONE DE MESSAGES ---
+                // Messages
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 16) {
@@ -61,7 +60,7 @@ struct ChatView: View {
                     }
                 }
 
-                // --- BARRE D'ENTRÉE ---
+                // Input bar
                 HStack {
                     HStack {
                         TextField("Type your message...", text: $viewModel.currentInput)
@@ -91,7 +90,7 @@ struct ChatView: View {
                 .background(.ultraThinMaterial)
                 .blur(radius: isClosing ? 15 : 0)
 
-                // --- BOUTON FINAL STYLÉ ---
+                // Final CTA button
                 if viewModel.isConversationFinished && !isClosing {
                     Button(action: {
                         withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.8)) {

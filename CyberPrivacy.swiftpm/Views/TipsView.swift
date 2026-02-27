@@ -79,7 +79,7 @@ struct TipsView: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header avec insight
+                    // Header
                     VStack(spacing: 12) {
                         Text("Security Tips")
                             .font(.largeTitle)
@@ -169,7 +169,7 @@ struct TipsView: View {
             }
             .frame(maxWidth: .infinity)
 
-            // Completion badge (si 4/4)
+            // Completion badge
             if showCompletionBadge {
                 VStack {
                     Spacer()
@@ -283,7 +283,7 @@ struct TipDetailView: View {
                     .foregroundStyle(.primary.opacity(0.85))
                     .lineSpacing(4)
 
-                // Exemples
+                // Examples
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Real-world examples")
                         .font(.subheadline.weight(.semibold))

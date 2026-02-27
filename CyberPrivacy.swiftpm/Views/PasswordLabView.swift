@@ -6,7 +6,7 @@ struct PasswordLabView: View {
 
     var body: some View {
         ZStack {
-            Color(UIColor.systemGroupedBackground).ignoresSafeArea() // Fond clair iOS standard
+            Color(UIColor.systemGroupedBackground).ignoresSafeArea()
 
             ScrollView {
                 VStack(spacing: 25) {

@@ -12,7 +12,6 @@ struct LockTransitionView: View {
 
     var body: some View {
         ZStack {
-            // Fond avec blur progressif (liquid glass effect)
             Color.white
                 .opacity(0.01)
                 .background(.ultraThinMaterial)
@@ -22,7 +21,7 @@ struct LockTransitionView: View {
             VStack(spacing: 24) {
                 Spacer()
 
-                // L'icône qui morphe
+                // Morphing icon (Face ID -> Lock)
                 Image(systemName: currentIcon)
                     .font(.system(size: 72, weight: .light))
                     .foregroundStyle(
@@ -35,7 +34,6 @@ struct LockTransitionView: View {
                     .opacity(opacity)
                     .accessibilityHidden(true)
 
-                // Texte qui change
                 Text(currentIcon == "faceid"
                      ? "Analyzing"
                      : "Let's learn how to secure your digital life")
@@ -58,7 +56,7 @@ struct LockTransitionView: View {
         }
     }
 
-    /// Reduce Motion: show lock icon + text instantly, wait 1.5s, complete
+    /// Reduce Motion: show lock icon instantly, wait 1.5s, then complete
     private func animateReduced() {
         currentIcon = "lock.fill"
         opacity = 1.0
@@ -73,21 +71,20 @@ struct LockTransitionView: View {
     }
 
     private func animateSequence() {
-        // Phase 1 : Fade in Face ID + blur (0.0s → 0.5s)
+        // Phase 1: Fade in Face ID + blur
         withAnimation(.easeOut(duration: 0.5)) {
             opacity = 1.0
             scale = 1.0
             blurRadius = 20
         }
 
-        // Phase 2 : Transition vers lock (1.2s)
+        // Phase 2: Transition to lock icon
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             withAnimation(.easeInOut(duration: 0.5)) {
                 scale = 0.8
                 opacity = 0.0
             }
 
-            // Switch icône
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 currentIcon = "lock.fill"
 
@@ -95,10 +92,9 @@ struct LockTransitionView: View {
                     scale = 1.0
                     opacity = 1.0
                     rotation = 15
-                    blurRadius = 25 // Plus de blur pour effet liquid
+                    blurRadius = 25
                 }
 
-                // Haptic
                 let impact = UIImpactFeedbackGenerator(style: .medium)
                 impact.impactOccurred()
 
@@ -106,7 +102,7 @@ struct LockTransitionView: View {
             }
         }
 
-        // Phase 3 : Fade out (3.0s - plus long pour lire le message)
+        // Phase 3: Fade out and complete
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             withAnimation(.easeIn(duration: 0.5)) {
                 opacity = 0.0
