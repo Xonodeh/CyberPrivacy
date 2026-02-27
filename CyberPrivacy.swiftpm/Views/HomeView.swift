@@ -33,7 +33,7 @@ struct HomeView: View {
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundColor(.primary)
 
-                // Welcome, {name}
+                // Hello, Eliott.
                 HStack(spacing: 0) {
                     Text("Hello, ")
                         .font(.system(.title3, design: .rounded).weight(.medium))
